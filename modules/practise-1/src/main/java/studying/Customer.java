@@ -1,19 +1,18 @@
 package studying;
 
-import lombok.Getter;
 import lombok.Setter;
+import lombok.Getter;
 import lombok.ToString;
 
+@Getter
+@Setter
 @ToString
 public class Customer {
-    @Getter
-    private final String fullName;
 
-    @Getter
-    @Setter
+    private String fio;
     private Car car;
 
-    public Customer(String fullName) {
-        this.fullName = fullName;
+    public Customer(String fio) {
+        this.fio = fio;
     }
 }

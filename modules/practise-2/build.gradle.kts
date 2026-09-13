@@ -10,7 +10,7 @@ java {
 }
 
 application {
-    mainClass = "studying.withoutsolid.Main"
+    mainClass = "studying.withsolid.Main"
 }
 
 dependencies {

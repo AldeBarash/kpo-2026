@@ -1,19 +1,14 @@
 package studying;
 
+import lombok.Getter;
+
+@Getter
 public class Engine {
-    private final int size;
-    public static final String TYPE = "ELECTRIC";
 
-    public Engine(int size) {
-        this.size = size;
+    private int pedSize;
+
+    public Engine(int pedSize) {
+        this.pedSize = pedSize;
     }
 
-    public int getSize() {
-        return size;
-    }
-
-    @Override
-    public String toString() {
-        return "Engine{" + "size=" + size + '}';
-    }
 }
