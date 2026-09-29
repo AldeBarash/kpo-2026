@@ -1,2 +1,2 @@
-/** Application-specific exceptions. */
+/** Application-specific error types. */
 package studying.exception;

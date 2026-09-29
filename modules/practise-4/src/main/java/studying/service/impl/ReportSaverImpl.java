@@ -14,6 +14,17 @@ public final class ReportSaverImpl implements ReportSaver {
     /** Formats report times for file names. */
     private static final DateTimeFormatter DATE_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("HH-mm-ss");
+    /** Directory used for saved reports. */
+    private final Path reportsDirectory;
+
+    /**
+     * Creates a saver that writes reports into the supplied directory.
+     *
+     * @param targetDirectory target directory
+     */
+    public ReportSaverImpl(final Path targetDirectory) {
+        this.reportsDirectory = targetDirectory;
+    }
 
     @Override
     public void save(final Report report) {
@@ -24,7 +35,7 @@ public final class ReportSaverImpl implements ReportSaver {
             );
         }
 
-        var reportForSave = Path.of("modules/practise-2/reports",
+        var reportForSave = reportsDirectory.resolve(
                 "report-%s-%s.txt".formatted(
                 report.date(),
                 report.time().format(DATE_TIME_FORMATTER)
@@ -38,6 +49,5 @@ public final class ReportSaverImpl implements ReportSaver {
                     ApplicationErrorCode.FILE_WRITE_ERROR,
                     "Не удалось сохранить отчёт в " + reportForSave, exception);
         }
-
     }
 }

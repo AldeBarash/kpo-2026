@@ -1,2 +1,2 @@
-/** Concrete report saver and sender implementations. */
+/** Implementations of report service contracts. */
 package studying.service.impl;

@@ -1,28 +1,20 @@
 package studying.exception;
 
+import lombok.Getter;
+
 /** Runtime exception with an application-level error code and root cause. */
-public final class ApplicationException extends RuntimeException {
+@Getter
+public class ApplicationException extends RuntimeException {
     /** Application-specific error code. */
     private final ApplicationErrorCode code;
 
     /**
-     * Creates an application error without a root cause.
+     * Creates an application error.
      *
-     * @param errorCode machine-readable error code
-     * @param message error description
-     */
-    public ApplicationException(final ApplicationErrorCode errorCode,
-                                final String message) {
-        super(message);
-        this.code = errorCode;
-    }
-
-    /**
-     * Creates an application error with its original cause.
-     *
-     * @param errorCode machine-readable error code
-     * @param message error description
-     * @param cause original exception
+     * @param errorCode error code
+     * @param message description
+     * @param cause original exception, or {@code null} when there is no root
+     *     cause
      */
     public ApplicationException(final ApplicationErrorCode errorCode,
                                 final String message,
@@ -32,11 +24,14 @@ public final class ApplicationException extends RuntimeException {
     }
 
     /**
-     * Returns the machine-readable application error code.
+     * Creates an application error.
      *
-     * @return application error code
+     * @param errorCode error code
+     * @param message description
      */
-    public ApplicationErrorCode getCode() {
-        return code;
+    public ApplicationException(final ApplicationErrorCode errorCode,
+                                final String message) {
+        super(message);
+        this.code = errorCode;
     }
 }

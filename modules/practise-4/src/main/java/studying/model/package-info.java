@@ -1,2 +1,2 @@
-/** Report domain model. */
+/** Domain objects for report processing. */
 package studying.model;

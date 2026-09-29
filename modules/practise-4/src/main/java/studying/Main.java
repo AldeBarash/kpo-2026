@@ -1,12 +1,12 @@
-package studying.ioc.di;
+package studying;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import studying.service.ReportService;
 import studying.model.Report;
 
-/** Runs the dependency-injection example. */
 @SpringBootApplication
 public final class Main {
     /** Number of cars in the demonstration report. */
@@ -17,15 +17,15 @@ public final class Main {
     private Main() { }
 
     /**
-     * Starts the application with a demonstration report.
+     * Runs the dependency-injection example.
      *
      * @param args command-line arguments
      */
     public static void main(final String[] args) {
-        final var context = SpringApplication.run(Main.class, args);
-        final var service = context.getBean(ReportService.class);
+        var context = SpringApplication.run(Main.class);
+        var service = context.getBean(ReportService.class);
+
         service.process(new Report("Продажи", LocalDate.now(), LocalTime.now(),
-                DEMO_CARS_SOLD, DEMO_MOTORCYCLES_SOLD),
-                "student@hse.ru");
+                DEMO_CARS_SOLD, DEMO_MOTORCYCLES_SOLD), "student@hse.ru");
     }
 }

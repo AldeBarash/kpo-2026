@@ -6,9 +6,9 @@ import studying.model.Report;
 @FunctionalInterface
 public interface ReportSender {
     /**
-     * Sends the supplied report to the recipient.
+     * Sends the supplied report.
      *
-     * @param report report to send
+     * @param report report to deliver
      * @param email recipient email address
      */
     void send(Report report, String email);
