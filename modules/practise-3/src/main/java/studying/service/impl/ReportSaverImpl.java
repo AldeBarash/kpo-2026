@@ -38,5 +38,6 @@ public final class ReportSaverImpl implements ReportSaver {
                     ApplicationErrorCode.FILE_WRITE_ERROR,
                     "Не удалось сохранить отчёт в " + reportForSave, exception);
         }
+
     }
 }

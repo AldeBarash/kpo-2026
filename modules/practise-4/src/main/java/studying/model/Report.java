@@ -22,28 +22,20 @@ public record Report(
         int carsSold,
         int motorcyclesSold
 ) {
-    // КОМПАКТНЫЙ КОНСТРУКТОР ДЛЯ ВАЛИДАЦИИ (Добавлен для Практики 4)
+    /**
+     * Validates the report data before it is made available to services.
+     */
     public Report {
-        // 1. Валидация заголовка
-        if (title == null || title.trim().isEmpty()) {
+        if (title == null || title.isBlank()) {
             throw new ApplicationException(
                     ApplicationErrorCode.VALIDATION_ERROR,
-                    "Заголовок отчета обязателен и не может быть пустым"
-            );
+                    "Заголовок отчёта обязателен");
         }
-        // 2. Валидация автомобилей
-        if (carsSold < 0) {
+        if (carsSold < 0 || motorcyclesSold < 0) {
             throw new ApplicationException(
                     ApplicationErrorCode.VALIDATION_ERROR,
-                    "Количество проданных автомобилей не может быть отрицательным"
-            );
-        }
-        // 3. Валидация мотоциклов
-        if (motorcyclesSold < 0) {
-            throw new ApplicationException(
-                    ApplicationErrorCode.VALIDATION_ERROR,
-                    "Количество проданных мотоциклов не может быть отрицательным"
-            );
+                    "Количество проданного транспорта не может быть "
+                            + "отрицательным");
         }
     }
 

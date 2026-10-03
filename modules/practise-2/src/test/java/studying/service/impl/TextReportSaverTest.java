@@ -23,6 +23,7 @@ class TextReportSaverTest {
         var file = Path.of("reports", "report-2026-09-11-12-00-00.txt");
 
         try {
+            when(ReportSaverImpl.save()).then()
             new ReportSaverImpl().save(report);
 
             assertEquals(report.toString(), Files.readString(file));
