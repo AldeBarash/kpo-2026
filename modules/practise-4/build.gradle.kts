@@ -2,6 +2,7 @@ plugins {
     application
     checkstyle
     java
+    jacoco
     id("org.springframework.boot")
 }
 
@@ -31,6 +32,19 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+tasks.test {
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        html.required = true
+        xml.required = false
+        csv.required = false
+    }
 }
 
 val sunChecks = configurations.detachedConfiguration(

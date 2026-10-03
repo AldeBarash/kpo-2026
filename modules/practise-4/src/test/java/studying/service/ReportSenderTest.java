@@ -13,10 +13,12 @@ import studying.service.impl.ReportSenderImpl;
 
 @DisplayName("Unit-тесты отправителя отчётов")
 public class ReportSenderTest {
+    private static final LocalDate REPORT_DATE = LocalDate.of(2026, 9, 29);
+    private static final int CARS_SOLD = 12;
     private static final Report REPORT = Report.builder()
             .title("Продажи")
-            .date(LocalDate.of(2026, 9, 29))
-            .carsSold(12)
+            .date(REPORT_DATE)
+            .carsSold(CARS_SOLD)
             .time(LocalTime.MAX)
             .motorcyclesSold(1)
             .build();
@@ -36,6 +38,7 @@ public class ReportSenderTest {
     @DisplayName("Отправитель отклоняет отсутствующий email")
     void rejectsMissingEmail() {
         final ReportSenderImpl sender = new ReportSenderImpl();
-        assertThrows(ApplicationException.class, () -> sender.send(REPORT, null));
+        assertThrows(ApplicationException.class,
+                () -> sender.send(REPORT, null));
     }
 }

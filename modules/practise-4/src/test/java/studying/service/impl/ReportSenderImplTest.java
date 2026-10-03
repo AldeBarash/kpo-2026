@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import studying.exception.ApplicationErrorCode;
@@ -14,10 +13,12 @@ import studying.model.Report;
 /** Unit tests for the safe in-memory report sender. */
 @DisplayName("Unit-тесты отправителя отчётов")
 class ReportSenderImplTest {
+    private static final LocalDate REPORT_DATE = LocalDate.of(2026, 9, 29);
+    private static final int CARS_SOLD = 12;
     private static final Report REPORT = Report.builder()
             .title("Продажи")
-            .date(LocalDate.of(2026, 9, 29))
-            .carsSold(12)
+            .date(REPORT_DATE)
+            .carsSold(CARS_SOLD)
             .build();
 
     @Test

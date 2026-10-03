@@ -1,7 +1,6 @@
 package studying.service;
 
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -17,7 +16,6 @@ import studying.Main;
 import studying.exception.ApplicationErrorCode;
 import studying.exception.ApplicationException;
 import studying.model.Report;
-import studying.service.impl.ReportSaverImpl;
 
 /** Tests ReportService with Spring-replaced collaborators. */
 @SpringBootTest(classes = Main.class)

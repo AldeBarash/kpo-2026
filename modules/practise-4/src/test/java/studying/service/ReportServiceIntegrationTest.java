@@ -37,8 +37,8 @@ class ReportServiceIntegrationTest {
     @Autowired
     private ReportSender sender;
 
-    final Report report = new Report("Продажи", LocalDate.of(2026, 9, 29),
-            LocalTime.of(10, 15, 30), 12, 7);
+    private final Report report = new Report("Продажи",
+            LocalDate.of(2026, 9, 29), LocalTime.of(10, 15, 30), 12, 7);
 
     @DynamicPropertySource
     static void reportStorageDirectory(final DynamicPropertyRegistry registry) {
