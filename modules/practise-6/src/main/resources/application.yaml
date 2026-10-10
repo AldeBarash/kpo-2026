@@ -1,0 +1,13 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: notification-delivery
+
+management:
+  endpoints:
+    web:
+      base-path: /
+      exposure:
+        include: health,metrics
