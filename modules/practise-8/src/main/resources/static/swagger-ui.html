@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Практика 8 — Swagger UI</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui.css">
+</head>
+<body>
+  <p id="loading">Загрузка Swagger UI требует доступа к CDN.
+    <a href="./openapi.yaml">Скачать OpenAPI-спецификацию</a>.
+  </p>
+  <div id="swagger-ui"></div>
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui-bundle.js"></script>
+  <script>
+    if (typeof SwaggerUIBundle === "function") {
+      SwaggerUIBundle({
+        url: "./openapi.yaml",
+        dom_id: "#swagger-ui",
+        deepLinking: true,
+        validatorUrl: null,
+        presets: [SwaggerUIBundle.presets.apis]
+      });
+      document.getElementById("loading").hidden = true;
+    }
+  </script>
+</body>
+</html>

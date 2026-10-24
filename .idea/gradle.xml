@@ -10,8 +10,7 @@
           <set>
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/modules" />
-            <option value="$PROJECT_DIR$/modules/practise-3" />
-            <option value="$PROJECT_DIR$/modules/practise-4" />
+            <option value="$PROJECT_DIR$/modules/practise-8" />
           </set>
         </option>
       </GradleProjectSettings>
