@@ -1,0 +1,321 @@
+openapi: 3.0.3
+info:
+  title: Практика 8 — API доставки уведомлений
+  version: 1.0.0
+  description: |
+    Учебный JSON API на Spring MVC. Создание ставит доставку в очередь;
+    отправка выполняется отдельной синхронной командой обработки.
+    Данные хранятся в памяти и теряются после перезапуска.
+    Учебный отправитель имеет общую для всех доставок последовательность:
+    временная ошибка, затем успех. После двух отправок сценарий исчерпан;
+    для сброса перезапустите приложение.
+servers:
+  - url: http://localhost:8080/
+    description: Сервер, с которого загружена спецификация
+tags:
+  - name: Доставки
+    description: Создание и чтение состояния доставок
+  - name: Обработка
+    description: Синхронная обработка готовых доставок
+paths:
+  /api/deliveries:
+    post:
+      tags: [Доставки]
+      operationId: createDelivery
+      summary: Создать доставку
+      description: |
+        Проверяет входные данные, создаёт уведомление и ставит доставку
+        в очередь без немедленной отправки. Прошедшее readyAt допустимо.
+        Идентификатор и время создания уведомления назначает сервер.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDeliveryRequest'
+            examples:
+              email:
+                summary: Email с тремя попытками
+                value:
+                  channel: EMAIL
+                  recipient: student@example.com
+                  text: Практика 8
+                  priority: NORMAL
+                  readyAt: '2026-10-23T12:00:00Z'
+                  retry:
+                    maxAttempts: 3
+                    baseDelaySeconds: 10
+              push:
+                summary: Push без повторов
+                value:
+                  channel: PUSH
+                  recipient: device-123
+                  text: Новое уведомление
+                  priority: HIGH
+                  readyAt: '2026-10-23T12:00:00Z'
+                  retry:
+                    maxAttempts: 1
+                    baseDelaySeconds: 10
+      responses:
+        '201':
+          description: Доставка создана со статусом PENDING и нулём попыток
+          headers:
+            Location:
+              description: Относительный адрес созданного ресурса
+              schema:
+                type: string
+                example: /api/deliveries/c7c8a64e-a868-4ed0-bca0-b6a9a00f2d19
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliveryResponse'
+              examples:
+                pending:
+                  $ref: '#/components/examples/PendingDelivery'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      tags: [Доставки]
+      operationId: listDeliveries
+      summary: Получить все доставки
+      description: Возвращает доставки в порядке добавления, включая завершённые.
+      responses:
+        '200':
+          description: Массив снимков состояния; для пустого хранилища — []
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeliveryResponse'
+              examples:
+                empty:
+                  value: []
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/deliveries/{id}:
+    get:
+      tags: [Доставки]
+      operationId: getDelivery
+      summary: Получить доставку по UUID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Идентификатор из ответа создания
+          schema:
+            type: string
+            format: uuid
+          example: c7c8a64e-a868-4ed0-bca0-b6a9a00f2d19
+      responses:
+        '200':
+          description: Последний сохранённый снимок состояния доставки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliveryResponse'
+              examples:
+                pending:
+                  $ref: '#/components/examples/PendingDelivery'
+                succeeded:
+                  summary: Успех после повтора
+                  value:
+                    id: c7c8a64e-a868-4ed0-bca0-b6a9a00f2d19
+                    channel: EMAIL
+                    recipient: student@example.com
+                    text: Практика 8
+                    priority: NORMAL
+                    status: SUCCEEDED
+                    attemptsMade: 2
+                    nextAttemptAt: null
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          description: Корректный UUID, для которого нет доставки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                code: DELIVERY_NOT_FOUND
+                message: Доставка не найдена
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/delivery-processing:
+    post:
+      tags: [Обработка]
+      operationId: processDueDeliveries
+      summary: Обработать готовые доставки
+      description: |
+        Не требует тела запроса. Для каждой PENDING-доставки с
+        nextAttemptAt <= текущего серверного времени выполняет не более
+        одной попытки. SUCCEEDED и FAILED повторно не отправляются.
+        Временная ошибка назначает повтор с линейной задержкой
+        baseDelaySeconds * attemptsMade, пока не исчерпан maxAttempts.
+        Постоянная ошибка или исчерпание лимита переводят доставку в FAILED.
+        Это результат доставки, а не HTTP 500.
+        Сбои наблюдателей подсчитываются и не откатывают попытку.
+        При внутренней ошибке ранее обработанные доставки также не откатываются.
+      responses:
+        '200':
+          description: Обработка завершена, в том числе если готовых доставок нет
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessingResponse'
+              examples:
+                success:
+                  value:
+                    observerFailuresCount: 0
+                observerFailure:
+                  value:
+                    observerFailuresCount: 1
+        '500':
+          $ref: '#/components/responses/InternalError'
+components:
+  schemas:
+    NotificationChannel:
+      type: string
+      enum: [EMAIL, PUSH, IN_APP]
+    NotificationPriority:
+      type: string
+      enum: [LOW, NORMAL, HIGH]
+    CreateDeliveryRequest:
+      type: object
+      required: [channel, recipient, text, priority, readyAt, retry]
+      properties:
+        channel:
+          $ref: '#/components/schemas/NotificationChannel'
+        recipient:
+          type: string
+          minLength: 1
+          pattern: '\S'
+          description: Email, идентификатор устройства или пользователя; непустая строка
+        text:
+          type: string
+          minLength: 1
+          pattern: '\S'
+          description: Текст уведомления, не состоящий только из пробелов
+        priority:
+          $ref: '#/components/schemas/NotificationPriority'
+        readyAt:
+          type: string
+          format: date-time
+          description: Момент готовности первой попытки с часовым поясом
+          example: '2026-10-23T12:00:00Z'
+        retry:
+          $ref: '#/components/schemas/RetryRequest'
+    RetryRequest:
+      type: object
+      required: [maxAttempts, baseDelaySeconds]
+      properties:
+        maxAttempts:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 2147483647
+          description: Максимум попыток, включая первую
+          example: 3
+        baseDelaySeconds:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 9223372036854775807
+          description: Базовая задержка повтора в секундах
+          example: 10
+    DeliveryResponse:
+      type: object
+      required: [id, channel, recipient, text, priority, status, attemptsMade, nextAttemptAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        channel:
+          $ref: '#/components/schemas/NotificationChannel'
+        recipient:
+          type: string
+        text:
+          type: string
+        priority:
+          $ref: '#/components/schemas/NotificationPriority'
+        status:
+          type: string
+          enum: [PENDING, SUCCEEDED, FAILED]
+        attemptsMade:
+          type: integer
+          format: int32
+          minimum: 0
+        nextAttemptAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Время следующей попытки для PENDING; null для SUCCEEDED и FAILED
+    ProcessingResponse:
+      type: object
+      required: [observerFailuresCount]
+      properties:
+        observerFailuresCount:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Число сбоев наблюдателей за вызов, не число отправок
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: |
+            INVALID_REQUEST — формат или валидация HTTP-входа;
+            NOTIFICATION_VALIDATION_ERROR, INVALID_RETRY_POLICY,
+            UNSUPPORTED_NOTIFICATION_CHANNEL — проверка данных приложением;
+            DELIVERY_NOT_FOUND — доставка не найдена;
+            INTERNAL_ERROR — внутренний сбой;
+            HTTP_405, HTTP_415 и другие HTTP_<статус> — ошибки Spring MVC.
+        message:
+          type: string
+          description: Безопасное сообщение без stack trace и внутренних деталей
+  examples:
+    PendingDelivery:
+      summary: Доставка поставлена в очередь
+      value:
+        id: c7c8a64e-a868-4ed0-bca0-b6a9a00f2d19
+        channel: EMAIL
+        recipient: student@example.com
+        text: Практика 8
+        priority: NORMAL
+        status: PENDING
+        attemptsMade: 0
+        nextAttemptAt: '2026-10-23T12:00:00Z'
+  responses:
+    InvalidRequest:
+      description: Некорректный JSON, UUID, enum, дата или нарушение требований к полям
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: INVALID_REQUEST
+            message: Некорректный HTTP-запрос
+    UnsupportedMediaType:
+      description: Неподдерживаемый Content-Type тела запроса
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: HTTP_415
+            message: Некорректный HTTP-запрос
+    InternalError:
+      description: Внутренний сбой, включая исчерпание сценария учебного отправителя
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: INTERNAL_ERROR
+            message: Внутренняя ошибка сервера

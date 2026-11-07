@@ -1,0 +1,22 @@
+server:
+  port: 8080
+
+spring:
+  jackson:
+    deserialization:
+      accept-float-as-int: false
+    datatype:
+      enum:
+        fail-on-numbers-for-enums: true
+  application:
+    name: notification-delivery
+
+management:
+  endpoints:
+    web:
+      base-path: /
+      exposure:
+        include: health,metrics,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}

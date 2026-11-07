@@ -15,6 +15,7 @@ public class ReportSenderImpl implements ReportSender {
             );
         }
 
+
         System.out.printf("Отправка отчёта «%s» на email: %s%n", report.title(), email);
     }
 }
