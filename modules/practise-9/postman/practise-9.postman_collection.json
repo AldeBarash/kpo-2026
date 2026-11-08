@@ -1,0 +1,263 @@
+{
+  "info": {
+    "_postman_id": "8a287420-9eec-48bf-95d7-e998a6576987",
+    "name": "Practice 9 — AI Token Gateway",
+    "description": "Последовательная проверка регистрации, условного пополнения, API-ключа, реального usage Ollama, списаний, идемпотентности и ошибок. Запускайте всю коллекцию через Collection Runner в указанном порядке.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.collectionVariables.get('runId')) {",
+          "  pm.collectionVariables.set('runId', Date.now() + '-' + Math.floor(Math.random() * 100000));",
+          "}",
+          "if (!pm.collectionVariables.get('idempotencyKey')) {",
+          "  pm.collectionVariables.set('idempotencyKey', pm.variables.replaceIn('{{$guid}}'));",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {"key": "baseUrl", "value": "http://localhost:8080"},
+    {"key": "model", "value": "qwen2.5:0.5b"},
+    {"key": "runId", "value": ""},
+    {"key": "userId", "value": ""},
+    {"key": "apiKey", "value": ""},
+    {"key": "idempotencyKey", "value": ""},
+    {"key": "requestId", "value": ""},
+    {"key": "balanceAfterChat", "value": ""},
+    {"key": "emptyUserId", "value": ""},
+    {"key": "emptyApiKey", "value": ""}
+  ],
+  "item": [
+    {
+      "name": "01 — Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/actuator/health"
+      },
+      "event": [{
+        "listen": "test",
+        "script": {"type": "text/javascript", "exec": [
+          "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+          "pm.test('Application is UP', () => pm.expect(pm.response.json().status).to.eql('UP'));"
+        ]}
+      }]
+    },
+    {
+      "name": "02 — Register user",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\n  \"email\": \"postman-{{runId}}@example.com\"\n}"},
+        "url": "{{baseUrl}}/api/users"
+      },
+      "event": [{
+        "listen": "test",
+        "script": {"type": "text/javascript", "exec": [
+          "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+          "const json = pm.response.json();",
+          "pm.test('Initial balance is zero', () => pm.expect(json.balance).to.eql(0));",
+          "pm.collectionVariables.set('userId', json.id);"
+        ]}
+      }]
+    },
+    {
+      "name": "03 — Top up 10000 credits",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\n  \"amount\": 10000\n}"},
+        "url": "{{baseUrl}}/api/users/{{userId}}/top-ups"
+      },
+      "event": [{
+        "listen": "test",
+        "script": {"type": "text/javascript", "exec": [
+          "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+          "const json = pm.response.json();",
+          "pm.test('Balance is 10000', () => pm.expect(json.balance).to.eql(10000));",
+          "pm.test('Nothing is reserved', () => pm.expect(json.reservedBalance).to.eql(0));"
+        ]}
+      }]
+    },
+    {
+      "name": "04 — Issue API key",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/api/users/{{userId}}/api-keys"
+      },
+      "event": [{
+        "listen": "test",
+        "script": {"type": "text/javascript", "exec": [
+          "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+          "const json = pm.response.json();",
+          "pm.test('Key has local prefix', () => pm.expect(json.key).to.match(/^sk-local-/));",
+          "pm.collectionVariables.set('apiKey', json.key);"
+        ]}
+      }]
+    },
+    {
+      "name": "05 — Chat and charge real tokens",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{apiKey}}"},
+          {"key": "Idempotency-Key", "value": "{{idempotencyKey}}"},
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "body": {"mode": "raw", "raw": "{\n  \"model\": \"{{model}}\",\n  \"prompt\": \"Ответь одним коротким предложением: зачем базе данных нужны транзакции?\",\n  \"maxTokens\": 80\n}"},
+        "url": "{{baseUrl}}/v1/chat/completions"
+      },
+      "event": [{
+        "listen": "test",
+        "script": {"type": "text/javascript", "exec": [
+          "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+          "const json = pm.response.json();",
+          "pm.test('Ollama returned content', () => pm.expect(json.content).to.be.a('string').and.not.empty);",
+          "pm.test('Real prompt tokens captured', () => pm.expect(json.usage.promptTokens).to.be.above(0));",
+          "pm.test('Real completion tokens captured', () => pm.expect(json.usage.completionTokens).to.be.above(0));",
+          "pm.test('Credits charged', () => pm.expect(json.usage.chargedCredits).to.be.above(0));",
+          "pm.test('Balance decreased', () => pm.expect(json.balance).to.be.below(10000));",
+          "pm.collectionVariables.set('requestId', json.requestId);",
+          "pm.collectionVariables.set('balanceAfterChat', String(json.balance));"
+        ]}
+      }]
+    },
+    {
+      "name": "06 — Repeat idempotent chat",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{apiKey}}"},
+          {"key": "Idempotency-Key", "value": "{{idempotencyKey}}"},
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "body": {"mode": "raw", "raw": "{\n  \"model\": \"{{model}}\",\n  \"prompt\": \"Ответь одним коротким предложением: зачем базе данных нужны транзакции?\",\n  \"maxTokens\": 80\n}"},
+        "url": "{{baseUrl}}/v1/chat/completions"
+      },
+      "event": [{
+        "listen": "test",
+        "script": {"type": "text/javascript", "exec": [
+          "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+          "const json = pm.response.json();",
+          "pm.test('Same request returned', () => pm.expect(json.requestId).to.eql(pm.collectionVariables.get('requestId')));",
+          "pm.test('Balance was not charged twice', () => pm.expect(String(json.balance)).to.eql(pm.collectionVariables.get('balanceAfterChat')));"
+        ]}
+      }]
+    },
+    {
+      "name": "07 — Wallet after charge",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/users/{{userId}}/wallet"
+      },
+      "event": [{
+        "listen": "test",
+        "script": {"type": "text/javascript", "exec": [
+          "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+          "const json = pm.response.json();",
+          "pm.test('Reservation released', () => pm.expect(json.reservedBalance).to.eql(0));",
+          "pm.test('Balance matches completion', () => pm.expect(String(json.balance)).to.eql(pm.collectionVariables.get('balanceAfterChat')));"
+        ]}
+      }]
+    },
+    {
+      "name": "08 — Wallet transactions",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/users/{{userId}}/wallet/transactions?page=0&size=20"
+      },
+      "event": [{
+        "listen": "test",
+        "script": {"type": "text/javascript", "exec": [
+          "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+          "const json = pm.response.json();",
+          "const types = json.content.map(item => item.type);",
+          "pm.test('TOP_UP stored', () => pm.expect(types).to.include('TOP_UP'));",
+          "pm.test('RESERVE stored', () => pm.expect(types).to.include('RESERVE'));",
+          "pm.test('CHARGE stored', () => pm.expect(types).to.include('CHARGE'));",
+          "pm.test('RELEASE stored', () => pm.expect(types).to.include('RELEASE'));"
+        ]}
+      }]
+    },
+    {
+      "name": "09 — Register user without credits",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\n  \"email\": \"empty-{{runId}}@example.com\"\n}"},
+        "url": "{{baseUrl}}/api/users"
+      },
+      "event": [{
+        "listen": "test",
+        "script": {"type": "text/javascript", "exec": [
+          "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+          "pm.collectionVariables.set('emptyUserId', pm.response.json().id);"
+        ]}
+      }]
+    },
+    {
+      "name": "10 — Issue key without credits",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/api/users/{{emptyUserId}}/api-keys"
+      },
+      "event": [{
+        "listen": "test",
+        "script": {"type": "text/javascript", "exec": [
+          "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+          "pm.collectionVariables.set('emptyApiKey', pm.response.json().key);"
+        ]}
+      }]
+    },
+    {
+      "name": "11 — Reject chat without credits",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{emptyApiKey}}"},
+          {"key": "Idempotency-Key", "value": "no-money-{{runId}}"},
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "body": {"mode": "raw", "raw": "{\n  \"model\": \"{{model}}\",\n  \"prompt\": \"Этот prompt не должен попасть в Ollama\",\n  \"maxTokens\": 100\n}"},
+        "url": "{{baseUrl}}/v1/chat/completions"
+      },
+      "event": [{
+        "listen": "test",
+        "script": {"type": "text/javascript", "exec": [
+          "pm.test('HTTP 402', () => pm.response.to.have.status(402));",
+          "pm.test('Correct error code', () => pm.expect(pm.response.json().code).to.eql('INSUFFICIENT_CREDITS'));"
+        ]}
+      }]
+    },
+    {
+      "name": "12 — Reject invalid API key",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Authorization", "value": "Bearer sk-local-invalid"},
+          {"key": "Idempotency-Key", "value": "invalid-key-{{runId}}"},
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "body": {"mode": "raw", "raw": "{\n  \"model\": \"{{model}}\",\n  \"prompt\": \"test\",\n  \"maxTokens\": 10\n}"},
+        "url": "{{baseUrl}}/v1/chat/completions"
+      },
+      "event": [{
+        "listen": "test",
+        "script": {"type": "text/javascript", "exec": [
+          "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+          "pm.test('Correct error code', () => pm.expect(pm.response.json().code).to.eql('INVALID_API_KEY'));"
+        ]}
+      }]
+    }
+  ]
+}
