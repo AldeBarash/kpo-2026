@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - include:
+      file: db/telegram/changelog/changes/001-create-telegram-bindings.sql
+  - include:
+      file: db/telegram/changelog/changes/002-create-inbox-events.sql
+  - include:
+      file: db/telegram/changelog/changes/003-create-telegram-updates.sql
+  - include:
+      file: db/telegram/changelog/changes/004-create-telegram-notifications.sql
+  - include:
+      file: db/telegram/changelog/changes/005-index-telegram-ready.sql
+  - include:
+      file: db/telegram/changelog/changes/006-create-telegram-poll-state.sql
+  - include:
+      file: db/telegram/changelog/changes/007-seed-telegram-poll-state.sql

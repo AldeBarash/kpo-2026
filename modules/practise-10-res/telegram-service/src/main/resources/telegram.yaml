@@ -1,0 +1,44 @@
+server:
+  port: 8081
+spring:
+  application:
+    name: telegram-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/telegram}
+    username: ${SPRING_DATASOURCE_USERNAME:telegram}
+    password: ${SPRING_DATASOURCE_PASSWORD:telegram}
+  liquibase:
+    change-log: classpath:db/telegram/changelog/db.changelog-master.yaml
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+  task:
+    scheduling:
+      pool:
+        size: 4
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+app:
+  gateway:
+    base-url: ${GATEWAY_BASE_URL:http://localhost:8080}
+    token: ${INTERNAL_API_TOKEN:local-development-service-token-change-me}
+  delivery:
+    topic: billing.credits-charged.v1
+    dlt: billing.credits-charged.dlt
+    consumer-enabled: ${KAFKA_CONSUMER_ENABLED:true}
+    max-attempts: ${DELIVERY_MAX_ATTEMPTS:8}
+    lease-seconds: ${DELIVERY_LEASE_SECONDS:60}
+    retry-seconds: ${DELIVERY_RETRY_SECONDS:2}
+    max-retry-seconds: ${DELIVERY_MAX_RETRY_SECONDS:300}
+  telegram:
+    enabled: ${TELEGRAM_BOT_ENABLED:false}
+    token: ${TELEGRAM_BOT_TOKEN:}
+    base-url: ${TELEGRAM_API_BASE_URL:https://api.telegram.org}
+    poll-ms: 1000
+    send-ms: 1000
